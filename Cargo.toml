@@ -4,8 +4,21 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-memmap2 = "0.9.5"
-regex = "1.11.1"
-safetensors = "0.4.5"
-serde = {version="1.0.215", features = ["derive"]}
-serde_json = "1.0.133"
+feed-rs = "2.2.0"
+rustpotion = "0.2.0"
+reqwest = {version="0.12.9", features = ["rustls-tls"], default-features = false }
+tokio = {version="1.42.0",  features = ["full"]}
+futures = "0.3.31"
+ndarray = "0.16.1"
+unicode-normalization = "0.1.24"
+vercel_runtime = { version = "1" }
+serde_json = { version = "1", features = ["raw_value"] }
+chrono = "0.4.38"
+
+[[bin]]
+name = "handler"
+path = "api/handler.rs"
+
+#[lib]
+#name = ""
+#path = "lib.rs"
