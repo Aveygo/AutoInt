@@ -14,11 +14,9 @@ unicode-normalization = "0.1.24"
 vercel_runtime = { version = "1" }
 serde_json = { version = "1", features = ["raw_value"] }
 chrono = "0.4.38"
+serde = "1.0.215"
+postgrest = "1.6.0"
 
-[[bin]]
-name = "handler"
-path = "api/handler.rs"
-
-#[lib]
-#name = ""
-#path = "lib.rs"
+[lib]
+name = "watchdog"
+path = "watchdog/lib.rs"

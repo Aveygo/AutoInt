@@ -1,5 +1,3 @@
-use ndarray;
-use std::ops::Mul;
 use std::cmp::{max, min};
 use std::collections::HashSet;
 
@@ -10,7 +8,7 @@ struct Element {
     value: f32
 }
 
-fn transpose(matrix: Vec<Vec<f32>>) -> Vec<Vec<f32>> {
+fn transpose(matrix: &Vec<Vec<f32>>) -> Vec<Vec<f32>> {
     if matrix.is_empty() || matrix[0].is_empty() {
         return Vec::new();
     }
@@ -27,7 +25,7 @@ fn transpose(matrix: Vec<Vec<f32>>) -> Vec<Vec<f32>> {
     transposed
 }
 
-fn matrix_multiply(a: Vec<Vec<f32>>, b: Vec<Vec<f32>>) -> Vec<Vec<f32>> {
+fn matrix_multiply(a: &Vec<Vec<f32>>, b: &Vec<Vec<f32>>) -> Vec<Vec<f32>> {
     let rows_a = a.len();
     let cols_a = a[0].len();
     let rows_b = b.len();
@@ -82,36 +80,45 @@ pub fn find_clusters(embeddings:Vec<Vec<f32>>, threshold:f32, min_cluster_size:u
     let mut extracted_communities:Vec<Vec<usize>> = vec![];
     let mut sort_max_size = min(max(2 * min_cluster_size, 50), emb_len);
 
-    let cos_scores = matrix_multiply(embeddings.clone(), transpose(embeddings));
-    let top_k_elements = top_k_2d(&cos_scores, min_cluster_size, true);
+    let batch_size = 1024;
 
-    for i in 0..top_k_elements.len() {
-        if top_k_elements[i][top_k_elements[i].len()-1].value > threshold {
+    for start_idx in (0..emb_len).step_by(batch_size) {
 
-            let row = cos_scores[i].clone();
-            let mut top_val_elements = top_k_1d(&row, sort_max_size, true);
+        let sliced = embeddings[start_idx .. min(start_idx + batch_size, emb_len)].to_vec();
+        let cos_scores = matrix_multiply(&sliced, &transpose(&embeddings));
+        let top_k_elements = top_k_2d(&cos_scores, min_cluster_size, true);
+        
+        for i in 0..top_k_elements.len() {
+            if top_k_elements[i][top_k_elements[i].len()-1].value > threshold {
+                
+                let row = cos_scores[i].clone();
+                let mut top_val_elements = top_k_1d(&row, sort_max_size, true);
+                
+                while top_val_elements[top_val_elements.len()-1].value > threshold && sort_max_size < emb_len {
+                    sort_max_size = min(2 * sort_max_size, emb_len);
+                    top_val_elements = top_k_1d(&row, sort_max_size, true);
+                }
+                
+                let community:Vec<usize> =  top_val_elements.into_iter()
+                    .filter(|e| e.value >= threshold) 
+                    .map(|e| e.idx) 
+                    .collect();
+                
+                extracted_communities.push(
+                    community
+                );
 
-            while top_val_elements[top_val_elements.len()-1].value > threshold && sort_max_size < emb_len {
-                sort_max_size = min(2 * sort_max_size, emb_len);
-                top_val_elements = top_k_1d(&row, sort_max_size, true);
             }
-
-            let community:Vec<usize> =  top_val_elements.into_iter()
-                .filter(|e| e.value > threshold) 
-                .map(|e| e.idx) 
-                .collect();
-            
-            extracted_communities.push(
-               community
-            );
         }
     }
-
+    
     extracted_communities.sort_by(|a, b| b.len().partial_cmp(&a.len()).unwrap());
+
+
     let mut unique_communities = vec![];
     let mut extracted_ids = HashSet::new();
 
-    for (cluser_idx, community) in extracted_communities.into_iter().enumerate() {
+    for community in extracted_communities {
         let mut non_overlapped_community = vec![];
         for idx in community {
             if !(extracted_ids.contains(&idx)) {
@@ -125,8 +132,6 @@ pub fn find_clusters(embeddings:Vec<Vec<f32>>, threshold:f32, min_cluster_size:u
         }
     }
 
-    unique_communities.sort_by(|a, b| b.len().partial_cmp(&a.len()).unwrap());
-
-
+    unique_communities.sort_by(|a, b| b.len().partial_cmp(&a.len()).unwrap());    
     unique_communities 
 }

@@ -1,18 +1,14 @@
-mod watchdog;
-use std::thread;
+extern crate watchdog;
 use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::Duration;
+use postgrest::Postgrest;
+
+
+use watchdog::EventCluster;
 
 
 fn main() {
-
-    let watchdog = Arc::new(Mutex::new(watchdog::Watchdog::new()));
-
-
-    let handle = thread::spawn(move || {
-        watchdog.lock().unwrap().start();
-    });
-
-    thread::sleep(Duration::new(50, 0));
+    
 
 }

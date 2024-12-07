@@ -3,11 +3,11 @@ use feed_rs::parser;
 
 use tokio;
 use futures::future::join_all;
+use serde::{Deserialize, Serialize};
 
 use unicode_normalization::UnicodeNormalization;
 
-#[derive(Clone)]
-#[derive(Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Event {
     pub headline:String,
     pub published:i64,
