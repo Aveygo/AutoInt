@@ -2,8 +2,10 @@ use reqwest::get;
 use feed_rs::parser;
 
 use tokio;
+use std::thread;
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
+use std::sync::mpsc;
 
 use unicode_normalization::UnicodeNormalization;
 
@@ -25,7 +27,6 @@ impl Fetcher {
         }
     }
     
-    #[tokio::main]
     pub async fn run(&self) -> Result<Vec<Event>, ()> {
         let futures: Vec<_> = self.rss_urls.clone().into_iter().map(|url| tokio::spawn(Self::extract_feed(url))).collect();
         let results: Vec<Result<Vec<Event>, tokio::task::JoinError>> = join_all(futures).await;
@@ -75,11 +76,15 @@ impl Fetcher {
                 item.published,
                 item.links.get(0).map(|link| &link.href),
             ) {
-                result.push(Event {
-                    headline: title.content.nfc().collect(),
-                    published: published.timestamp(),
-                    href: href.clone(),
-                });
+
+                let headline:String = title.content.nfc().collect();
+                if headline.len() > 5 {
+                    result.push(Event {
+                        headline: headline,
+                        published: published.timestamp(),
+                        href: href.clone(),
+                    });
+                }
             }
         }
     

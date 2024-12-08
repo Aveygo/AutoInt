@@ -1,0 +1,307 @@
+<html>
+    <head>
+        <title> AutoInt </title>
+        <meta charset="UTF-8">
+        <meta name="description" content="Fast news detection">
+        <meta name="keywords" content="news, automatic, headlines, semantic">
+        <meta name="author" content="Greg Taylor">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body>
+        <div id="header">
+            <div id="nav">
+                <a class="nav_item" title="Github repository"><img src="static/github.svg"></a>
+                <a class="nav_item" title="Additional information"><img src="static/i.svg"></a>
+                <a class="nav_item" title="Issues"><img src="static/issue.svg"></a>
+            </div>
+            <img src="static/logo.svg"/>
+            <div id="report_info">
+                <h1>Automated Intelligence</h1>
+                <h2>REPORT FOR 8.12.2024 11:42:03</h2>
+                <table>
+                    <tr>
+                      <td>ID</td>
+                      <td id="meta_id">...</td>
+                    </tr>
+                    <tr>
+                      <td>TTL</td>
+                      <td id="meta_ttl">...</td>
+                    </tr>
+                    <tr">
+                        <td>CLUSTERS</td>
+                        <td  id="meta_nclusters">...</td>
+                    </tr>
+                    <tr>
+                        <td>TOT. EVENTS</td>
+                        <td id="meta_nevents">...</td>
+                    </tr>
+                    <tr>
+                        <td>AVG. ALERT</td>
+                        <td id="meta_avgalert">...</td>
+                    </tr>
+                  </table> 
+            </div>
+        </div>
+
+        <div id="content">
+            
+        </div>
+        <h2 id="end">END OF REPORT</h2>
+    </body>
+</html>
+
+<style>
+
+:root {
+  --main-bg-color: #313338;
+  --main-fg-color: #2b2d31;
+  --main-text-color: #dbdee1;
+}
+
+
+html {
+    background-image: url("static/background.png");
+
+
+}
+
+
+body {
+    font-family: monospace;
+}
+
+#header {
+    width: 100%;
+    margin-block: 100px;
+
+    color: white;
+    opacity: 0.7;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: stretch;
+
+    gap: 30px;
+}
+
+#report_info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    
+}
+
+#report_info h1 {
+    margin-top: 0;
+}
+
+#report_info table {
+    width: 400px;
+}
+
+#header td {
+    color: white;
+    opacity: 0.9;
+    padding-right: 50px;
+    
+    line-height: 0.7em;
+    font-size: 0.9em;
+    font-weight:200;
+}
+
+#content {
+    width: 100%;
+}
+
+#content hr {
+    width: 90%;
+}
+
+.alert {
+    width: 80%;
+    margin: auto;
+    
+    padding: 20px;
+    padding-top: 20px;
+    display: flex;
+    flex-direction: row;
+
+    align-items: center;
+    
+    
+}
+
+.headline {
+    width: 100%;
+    color: var(--main-text-color);
+    background-color: var(--main-fg-color);
+    box-shadow: rgba(0, 0, 0, 0.1) 0px 5px 15px;
+    padding-inline: 30px;
+}
+
+.headline h2 {
+    font-size: 1.5em;
+
+    flex-grow: 1;
+}
+
+.alert .rating {
+    width: 50px;
+    margin-right: 50px;
+    height: 100%;
+    text-align: left;
+    font-size: 2em;
+    font-weight: 900;
+    padding: 5px;
+    border-radius: 10px;
+    border-style: solid;
+    text-align: center;
+} 
+
+.alert .high {
+    color: #ed4245;
+    
+}
+
+.alert .med {
+    color: #fee75c;
+}
+
+.alert .low {
+    color: #57f287;
+}
+
+#end {
+    color:white;
+    opacity: 0.3;
+    width: 100%;
+    text-align: center;
+    margin-block: 100px;
+    margin-bottom: 200px;
+}
+
+.inner {
+    margin-top: 100px;
+
+    font-size: 1.5em;
+    color:white;
+    opacity: 0.5;
+    width: 100%;
+    text-align: center;
+}
+
+#nav {
+    float:right;
+    width: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: end;
+}
+
+.nav_item {
+    float:right;
+    border-radius: 100px;
+    aspect-ratio: 1;
+    width: 100%;
+}
+
+.nav_item:hover {
+    background-color: #18181a;
+    cursor: pointer;
+}
+
+.nav_item img {
+    height: 100%;
+    width: 100%;
+}
+
+</style>
+
+
+<script type="module">
+
+import { createClient } from "https://cdn.skypack.dev/@supabase/supabase-js";
+
+const supabase = createClient(
+    "https://sohcrqfldrqezsrdbelo.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvaGNycWZsZHJxZXpzcmRiZWxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM1NTg5NjMsImV4cCI6MjA0OTEzNDk2M30.kZJJBEfueUTt3QWu2XMZVdgwqvL5Xl_6IqmsAcW6BHw"
+);
+
+
+function getLevel(rating) {
+    let level = "low";
+    if (rating.includes("B") || rating.includes("A") ) {
+        level = "high"
+    } else if (rating.includes("C")) {
+        level = "med"
+    }
+    return level
+}
+
+function createAlert(headline, rating) {
+    let level = getLevel(rating);
+    const alertDiv = document.createElement('div');
+    alertDiv.classList.add('alert');
+    const ratingDiv = document.createElement('div');
+    ratingDiv.classList.add('rating', level);
+    ratingDiv.textContent = rating;
+    alertDiv.appendChild(ratingDiv);
+    const headlineDiv = document.createElement('div');
+    headlineDiv.classList.add('headline');
+    const headlineText = document.createElement('h2');
+    headlineText.textContent = headline;
+    headlineDiv.appendChild(headlineText);
+    alertDiv.appendChild(headlineDiv);
+    return alertDiv;
+}
+
+function add_news(news) {
+    let alert_el = createAlert(news.headline, news.rating);
+
+    document.getElementById("content").appendChild(alert_el);
+}
+
+(async () => {
+    const { error, data } = await supabase.from("data").select();
+    let report = JSON.parse(data[0]["value"]);
+
+    console.log(report);
+
+    document.getElementById("meta_id").innerHTML = report.id.substring(0, 6);
+    document.getElementById("meta_nclusters").innerHTML = report.clusters.length;
+
+    let split = document.createElement('div');
+    split.classList.add('inner', getLevel(report.clusters[0].rating));
+    split.innerHTML =  getLevel(report.clusters[0].rating).toUpperCase();
+    document.getElementById("content").appendChild(split);
+    document.getElementById("content").appendChild(document.createElement('hr'));
+
+
+    let n_events = 0;
+    for (let i=0; i< report.clusters.length; i++) {
+        n_events += report.clusters[i].num_sources;    
+
+        add_news(report.clusters[i]);
+
+        if (i+1 != report.clusters.length) {
+            if (getLevel(report.clusters[i].rating) != getLevel(report.clusters[i+1].rating) ) {
+                
+                let split = document.createElement('div');
+                split.classList.add('inner', getLevel(report.clusters[i+1].rating));
+                split.innerHTML =  getLevel(report.clusters[i+1].rating).toUpperCase();
+                document.getElementById("content").appendChild(split);
+
+                document.getElementById("content").appendChild(document.createElement('hr'));
+
+            }   
+        }
+    }
+    document.getElementById("meta_nevents").innerHTML = n_events;
+    document.getElementById("meta_avgalert").innerHTML = report.avg_rating;
+
+})();
+
+
+</script>

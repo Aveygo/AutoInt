@@ -1,5 +1,5 @@
 [package]
-name = "news"
+name = "watchdog"
 version = "0.1.0"
 edition = "2021"
 
@@ -14,8 +14,10 @@ unicode-normalization = "0.1.24"
 serde_json = { version = "1", features = ["raw_value"] }
 chrono = "0.4.38"
 serde = "1.0.215"
+postgrest = "1.6.0"
 dotenv = "0.15.0"
 dotenv_codegen = "0.15.0"
 
-watchdog = {path = "lib/watchdog"}
-tokio-postgres = "0.7.12"
+[lib]
+name = "watchdog"
+path = "src/lib.rs"

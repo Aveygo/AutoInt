@@ -74,7 +74,7 @@ fn top_k_2d(matrix: &Vec<Vec<f32>>, k: usize, largest: bool) -> Vec<Vec<Element>
 }
 
 
-pub fn find_clusters(embeddings:Vec<Vec<f32>>, threshold:f32, min_cluster_size:usize) -> Vec<Vec<usize>> {
+pub fn find_clusters(embeddings:&Vec<Vec<f32>>, threshold:f32, min_cluster_size:usize) -> Vec<Vec<usize>> {
 
     let emb_len = embeddings.len();
     let mut extracted_communities:Vec<Vec<usize>> = vec![];

@@ -12,12 +12,12 @@ use chrono::prelude::*;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct EventCluster {
-    sources: Vec<fetcher::Event>,
-    score: f32
+    pub sources: Vec<fetcher::Event>,
+    pub score: f32
 }
 
 pub struct Watchdog {
-    pub clusters: Arc<Mutex<Result<Vec<EventCluster>, ()>>>,
+    pub clusters: Result<Vec<EventCluster>, ()>,
 
     positive_tag:Vec<f32>,
     negative_tag:Vec<f32>,
@@ -34,7 +34,7 @@ impl Watchdog {
         let negative_tag = model.encode("Low priority news: opinions, celebrity, sports, gossip, local crimes, weather, music, puzzles");
 
         Self {
-            clusters: Arc::new(Mutex::new(Err(()))),
+            clusters: Err(()),
             positive_tag: positive_tag,
             negative_tag: negative_tag,
 
@@ -130,58 +130,14 @@ impl Watchdog {
 
     }
 
-    pub fn extract_clusters(&self) -> Vec<EventCluster> {
-        let events = self.fetcher.run().unwrap();
+    pub async fn extract_clusters(&self) -> Vec<EventCluster> {
+        let events = self.fetcher.run().await.unwrap();
         let headlines:Vec<String> = events.clone().into_iter().map(|event| event.headline).collect();
         let embeddings = self.model.encode_many(headlines.clone());
         let priorities = self.calc_priorities(&embeddings);
-        let clusters = community::find_clusters(embeddings, 0.6, 3);
+        let clusters = community::find_clusters(&embeddings, 0.6, 3);
         let result = self.sort_clusters(clusters, &events, priorities);
         result
     }
-
-    pub fn start(&mut self) {     
-        /*
-        let mut watchdog = watchdog::Watchdog::new();
-        let clusters_clone = Arc::clone(&watchdog.clusters);
-
-        let handle = thread::spawn(move || {
-            watchdog.start();
-        });
-
-        loop {
-            {               
-                let clusters_result = {
-                    let locked_cluster = clusters_clone.lock().unwrap();
-                    locked_cluster.clone()
-                };
-
-                match clusters_result {
-                    Ok(data) => {
-                        println!("{:?}", data.len());
-                    }
-                    Err(_e) => {
-                        println!("Failed");
-                    }
-                }
-                
-            }
-            thread::sleep(Duration::from_secs(5));
-        }
-        */   
-
-        loop {
-            let result = self.extract_clusters();
-
-            {
-                let mut locked_clusters = self.clusters.lock().unwrap();
-                *locked_clusters = Ok(result);
-            }
-            thread::sleep(Duration::from_secs(60*5));
-        }
-    }
-
-    
-
 
 }
