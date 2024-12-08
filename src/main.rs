@@ -1,12 +1,11 @@
-use tokio_postgres::{NoTls, Error};
-
+use tokio_postgres::NoTls;
 use dotenv_codegen::dotenv;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde::Serialize;
 
-use std::{hash::{DefaultHasher, Hash, Hasher}, thread, time::Duration};
+use std::{thread, time::Duration};
+use sha2::{Sha256, Digest};
 use chrono::Utc;
-use watchdog::{self, EventCluster};
+use watchdog::EventCluster;
 
 fn score_to_rating(score: u32) -> String {
     if score > 2000 {
@@ -64,17 +63,21 @@ impl CleanedCluster {
     }
 }
 
+fn hash_headlines(strings: Vec<String>) -> String {
+    let combined = strings.clone().join("");
+    let mut hasher = Sha256::new();
+    hasher.update(combined);
+    let result = hasher.finalize();
+    format!("{:X}", result)
+}
+
 impl Report {
     pub fn new(from: &Vec<EventCluster>) -> Self {
         
         let cleaned_clusters:Vec<CleanedCluster> = from.into_iter().map(|x| CleanedCluster::new(x)).collect();
         let avg_score = cleaned_clusters.iter().map(|x| x.score).sum::<u32>() as f32 / cleaned_clusters.len() as f32;
         let avg_rating = score_to_rating(avg_score as u32);
-        
-        let mut s = DefaultHasher::new();
-        cleaned_clusters.hash(&mut s);
-        let hash = format!("{:X}", s.finish());
-
+        let hash = hash_headlines(cleaned_clusters.clone().into_iter().map(|x| x.headline).collect())[0..6].to_string();
 
         Report {
             do_not_abuse: format!("Please see repo for self hosting."),
@@ -112,7 +115,7 @@ async fn main() {
         let query = format!("UPDATE data SET value = $1 WHERE id = 1");
         let rows_affected = client.execute(&query, &[&report_string]).await.unwrap();
 
-        println!("{:?} Uploaded report", report.id);
+        println!("{:?} Uploaded report, {:?} row update", report.id, rows_affected);
 
         thread::sleep(Duration::from_secs(60 * 5));
     }

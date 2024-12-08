@@ -2,12 +2,9 @@
 mod fetcher;
 mod community;
 use rustpotion::{RustPotion, PotionModel};
-use std::sync::{Mutex, Arc};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use std::path::Path;
-use std::{thread, vec};
-use std::time::Duration;
 use chrono::prelude::*;
 
 #[derive(Clone, Debug, Serialize)]

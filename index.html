@@ -6,6 +6,7 @@
         <meta name="keywords" content="news, automatic, headlines, semantic">
         <meta name="author" content="Greg Taylor">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" type="image/x-icon" href="static/favicon.ico">
     </head>
     <body>
         <div id="header">
@@ -17,7 +18,7 @@
             <img src="static/logo.svg"/>
             <div id="report_info">
                 <h1>Automated Intelligence</h1>
-                <h2>REPORT FOR 8.12.2024 11:42:03</h2>
+                <h2 id="day">...</h2>
                 <table>
                     <tr>
                       <td>ID</td>
@@ -44,9 +45,10 @@
         </div>
 
         <div id="content">
+
             
         </div>
-        <h2 id="end">END OF REPORT</h2>
+        <h2 id="end">LOADING...</h2>
     </body>
 </html>
 
@@ -136,14 +138,19 @@ body {
     width: 100%;
     color: var(--main-text-color);
     background-color: var(--main-fg-color);
-    box-shadow: rgba(0, 0, 0, 0.1) 0px 5px 15px;
+    
     padding-inline: 30px;
+    text-decoration: none;
+}
+
+.headline:hover {
+    box-shadow: rgba(0, 0, 0, 0.1) 0px 5px 15px;
 }
 
 .headline h2 {
     font-size: 1.5em;
-
     flex-grow: 1;
+    font-weight: 500;
 }
 
 .alert .rating {
@@ -217,17 +224,102 @@ body {
     width: 100%;
 }
 
+#panic {
+    width: 100%;
+    margin: auto;
+    text-align: center;
+    color: #ed4245
+}
+
+#panic h3 {
+    margin-top: 50px;
+}
+
 </style>
 
 
-<script type="module">
+<script>
 
-import { createClient } from "https://cdn.skypack.dev/@supabase/supabase-js";
+async function fetch_report() {
 
-const supabase = createClient(
-    "https://sohcrqfldrqezsrdbelo.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvaGNycWZsZHJxZXpzcmRiZWxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM1NTg5NjMsImV4cCI6MjA0OTEzNDk2M30.kZJJBEfueUTt3QWu2XMZVdgwqvL5Xl_6IqmsAcW6BHw"
-);
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvaGNycWZsZHJxZXpzcmRiZWxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM1NTg5NjMsImV4cCI6MjA0OTEzNDk2M30.kZJJBEfueUTt3QWu2XMZVdgwqvL5Xl_6IqmsAcW6BHw";
+    
+    const response = await fetch(`https://sohcrqfldrqezsrdbelo.supabase.co/rest/v1/data`, {
+        method: 'GET',
+        headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+        }
+    });
+
+    if (response.ok) {
+        const data = await response.json();
+
+        try {    
+            let report = JSON.parse(data[0]["value"]);
+            return report
+        } catch {
+            console.log("Could not parse data:", data);
+            panic();
+        }
+    }
+
+    console.error("Error fetching table data:", response.status, response.statusText);
+    panic();
+} 
+
+async function cached_fetch() {
+    let report = sessionStorage.getItem("report");
+
+    if (report) {
+        report = JSON.parse(report);
+
+        if ((report.published+60*5) - (Date.now()/1000) <= 0) {
+            console.log("Refreshing cache")
+            report = await fetch_report();
+
+            if ((report.published+60*5) - (Date.now()/1000) <= 20) {
+                panic()
+                return
+            }
+
+            sessionStorage.setItem("report", JSON.stringify(report));
+            return report;
+        }
+        console.log("Returning cache")
+        return report
+    }
+
+    console.log("Setting cache")
+    report = await fetch_report();
+    sessionStorage.setItem("report", JSON.stringify(report));
+    return report;
+}
+
+
+function panic() {
+    const panicDiv = document.createElement('div');
+    panicDiv.id = "panic"
+
+
+    const panicH1 = document.createElement('h1');
+    panicH1.innerHTML="ERR:500"
+
+
+    let panicH2 = document.createElement('h2');
+    panicH2.innerHTML="COULD NOT LOAD NEWS"
+
+    let panicH2_2 = document.createElement('h3');
+    panicH2_2.innerHTML="Pease see github / issues for more details"
+
+
+    panicDiv.appendChild(panicH1);
+    panicDiv.appendChild(panicH2);
+    panicDiv.appendChild(panicH2_2);
+    document.getElementById("content").appendChild(panicDiv);
+    document.getElementById("end").remove()
+}
 
 
 function getLevel(rating) {
@@ -240,43 +332,69 @@ function getLevel(rating) {
     return level
 }
 
-function createAlert(headline, rating) {
+function createAlert(headline, href, rating) {
     let level = getLevel(rating);
     const alertDiv = document.createElement('div');
     alertDiv.classList.add('alert');
     const ratingDiv = document.createElement('div');
     ratingDiv.classList.add('rating', level);
     ratingDiv.textContent = rating;
+    ratingDiv.title = "Alert rating"
     alertDiv.appendChild(ratingDiv);
-    const headlineDiv = document.createElement('div');
-    headlineDiv.classList.add('headline');
+    const headlineA = document.createElement('a');
+    headlineA.classList.add('headline');
+    headlineA.href = href;
+    headlineA.title = href
     const headlineText = document.createElement('h2');
     headlineText.textContent = headline;
-    headlineDiv.appendChild(headlineText);
-    alertDiv.appendChild(headlineDiv);
+    headlineA.appendChild(headlineText);
+    alertDiv.appendChild(headlineA);
     return alertDiv;
 }
 
 function add_news(news) {
-    let alert_el = createAlert(news.headline, news.rating);
+    let alert_el = createAlert(news.headline, news.href, news.rating);
 
     document.getElementById("content").appendChild(alert_el);
 }
 
+function add_dividor(rating) {
+    let split = document.createElement('div');
+    split.classList.add('inner', getLevel(rating));
+    split.innerHTML =  getLevel(rating).toUpperCase();
+    document.getElementById("content").appendChild(split);
+    document.getElementById("content").appendChild(document.createElement('hr'));
+}
+
+function formatTimestampToUTC(timestamp) {
+    const date = new Date(timestamp);
+
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+
+    return `${day}.${month}.${year} ${hours}.${minutes}.${seconds} UTC`;
+}
+
 (async () => {
-    const { error, data } = await supabase.from("data").select();
-    let report = JSON.parse(data[0]["value"]);
+    
+
+    let report = await cached_fetch();
+
+    if (!report) {
+        return
+    }
 
     console.log(report);
 
     document.getElementById("meta_id").innerHTML = report.id.substring(0, 6);
+    document.getElementById("meta_ttl").innerHTML = Math.max(Math.round((report.published+60*5) - (Date.now()/1000)), 0) + " SEC";
     document.getElementById("meta_nclusters").innerHTML = report.clusters.length;
 
-    let split = document.createElement('div');
-    split.classList.add('inner', getLevel(report.clusters[0].rating));
-    split.innerHTML =  getLevel(report.clusters[0].rating).toUpperCase();
-    document.getElementById("content").appendChild(split);
-    document.getElementById("content").appendChild(document.createElement('hr'));
+    add_dividor(report.clusters[0].rating)
 
 
     let n_events = 0;
@@ -287,20 +405,17 @@ function add_news(news) {
 
         if (i+1 != report.clusters.length) {
             if (getLevel(report.clusters[i].rating) != getLevel(report.clusters[i+1].rating) ) {
-                
-                let split = document.createElement('div');
-                split.classList.add('inner', getLevel(report.clusters[i+1].rating));
-                split.innerHTML =  getLevel(report.clusters[i+1].rating).toUpperCase();
-                document.getElementById("content").appendChild(split);
+                add_dividor(report.clusters[i+1].rating)
 
-                document.getElementById("content").appendChild(document.createElement('hr'));
 
             }   
         }
     }
     document.getElementById("meta_nevents").innerHTML = n_events;
-    document.getElementById("meta_avgalert").innerHTML = report.avg_rating;
+    document.getElementById("meta_avgalert").innerHTML = report.avg_rating + " (" + getLevel(report.avg_rating).toUpperCase() + ")";
+    document.getElementById("day").innerHTML = "REPORT FOR " + formatTimestampToUTC(report.published);
 
+    document.getElementById("end").innerHTML = "END OF REPORT"
 })();
 
 

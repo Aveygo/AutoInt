@@ -2,10 +2,8 @@ use reqwest::get;
 use feed_rs::parser;
 
 use tokio;
-use std::thread;
 use futures::future::join_all;
-use serde::{Deserialize, Serialize};
-use std::sync::mpsc;
+use serde::Serialize;
 
 use unicode_normalization::UnicodeNormalization;
 
