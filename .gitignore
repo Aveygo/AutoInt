@@ -3,3 +3,4 @@ models/
 .vercel
 .env
 .env_
+static/drawing.png

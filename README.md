@@ -2,7 +2,7 @@
     <img src="static/logo.svg" width=200px>
 </p>
 
-<h1 align=center id="user-content-toc">Automated Intelligence</h1>
+<h1 align=center>Automated Intelligence</h1>
 <p align=center>
     Fast global news: No ads, clickbait, or nonsense.
 </p>
@@ -10,6 +10,9 @@
 </br>
 </br>
 </br>
+
+# Site
+Visit it [here](https://aveygo.github.io/AutoInt/).
 
 # Extras
 If you are looking for how AutoInt works, checkout [extras](EXTRAS.md).
