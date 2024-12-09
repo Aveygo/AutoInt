@@ -1,15 +1,26 @@
 use tokio_postgres::NoTls;
-use dotenv_codegen::dotenv;
 use serde::Serialize;
 
 use std::{thread, time::Duration};
 use sha2::{Sha256, Digest};
 use chrono::Utc;
-use watchdog::EventCluster;
+use watchdog::{EventCluster, Watchdog};
 
+use std::path::Path;
 use std::env;
 use log::info;
 
+use std::sync::{Arc, Mutex};
+
+use axum::{
+    routing::{get, post, get_service},
+    http::StatusCode,
+    Json, Router,
+    extract::State,
+    response::{Html, IntoResponse}
+};
+
+use tower_http::services::ServeDir;
 
 fn score_to_rating(score: u32) -> String {
     if score > 2000 {
@@ -94,6 +105,11 @@ impl Report {
     }
 }
 
+#[derive(Clone)]
+struct AppState {
+    report: Arc<Mutex<Option<Report>>>
+}
+
 #[tokio::main]
 async fn main() {
 
@@ -103,31 +119,93 @@ async fn main() {
     env_logger::init();
 
     info!("Starting up...");
-    let connection_url:String = dotenv!("SUPABASE").to_string();
+
     let watchdog = watchdog::Watchdog::new();
+    
+    let supabase_url = env::var("SUPABASE");
 
-    let (client, connection) =
-        tokio_postgres::connect(&connection_url, NoTls).await.unwrap();
+    if !supabase_url.is_err() {
+        info!("Running in supabase setup");
+        
+        let connection_url:String = supabase_url.unwrap().to_string();
+        let (client, connection) = tokio_postgres::connect(&connection_url, NoTls).await.unwrap();
 
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            panic!("Connection error: {}", e);
+        tokio::spawn(async move {
+            if let Err(e) = connection.await {
+                panic!("Connection error: {}", e);
+            }
+        });
+
+        loop {
+            let clusters = watchdog.extract_clusters().await;
+
+            let report = Report::new(&clusters);
+            let report_string: String = serde_json::to_string(&report).unwrap();
+
+            let query = format!("UPDATE data SET value = $1 WHERE id = 1");
+            let rows_affected = client.execute(&query, &[&report_string]).await.unwrap();
+
+            info!("{:?} Uploaded report, {:?} row update", report.id, rows_affected);
+
+            thread::sleep(Duration::from_secs(60 * 5));
+            info!("Sleeping for 5 minutes")
         }
-    });
+    } else {
+        info!("Running in self-hosting setup");
+        
 
-    loop {
-        let clusters = watchdog.extract_clusters().await;
+        let report = Arc::new(Mutex::new(None));
+        let state = AppState{report:Arc::clone(&report)}; 
 
-        let report = Report::new(&clusters);
-        let report_string: String = serde_json::to_string(&report).unwrap();
+        let serve_dir = ServeDir::new("static");
 
-        let query = format!("UPDATE data SET value = $1 WHERE id = 1");
-        let rows_affected = client.execute(&query, &[&report_string]).await.unwrap();
+        let app = Router::new()
+            .route("/", get(root))
+            .route("/get_report", get(get_report))
+            .nest_service("/static", serve_dir)
+            .with_state(state);
 
-        info!("{:?} Uploaded report, {:?} row update", report.id, rows_affected);
+        let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
 
-        thread::sleep(Duration::from_secs(60 * 5));
-        info!("Sleeping for 5 minutes")
+        let _server_handle = tokio::spawn(async {
+            axum::serve(listener, app)
+
+                .await
+                .unwrap();
+        });
+
+        loop {
+            let clusters = watchdog.extract_clusters().await;
+
+            let new_report = Report::new(&clusters);
+
+            {
+                let mut locked = report.lock().unwrap();
+                *locked = Some(new_report);
+            }
+
+            thread::sleep(Duration::from_secs(60 * 5));
+            info!("Sleeping for 5 minutes")
+        }
+
     }
 
+}
+
+async fn root() -> impl IntoResponse {
+    match std::fs::read_to_string("index.html") {
+        Ok(content) => Html(content),
+        Err(e) => Html(format!("Error : {}", e)),
+    }
+}
+
+async fn get_report(State(state): State<AppState>,) -> (StatusCode, Json<Option<Report>>) {
+    info!("Got a connection");
+    let report;
+    {
+        let locked = state.report.lock().unwrap();
+        report = locked.clone();
+    }
+
+    (StatusCode::CREATED, Json(report))
 }

@@ -22,4 +22,15 @@ If you are looking for how AutoInt works, checkout [extras](EXTRAS.md).
 
 # Self Hosting
 
-TODO
+## Locally
+
+1. Use linux or [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
+2. Download the latest [release](https://github.com/Aveygo/AutoInt/releases)
+3. Set as an executable: ```chmod +x autoint```
+4. Run: ```./autoint``` 
+5. http://localhost:8000
+
+## Docker
+1. Install docker
+2. Run ```sudo docker run  -p 8000:8000 --rm aveygo/autoint```
+3. Go to http://localhost:8000

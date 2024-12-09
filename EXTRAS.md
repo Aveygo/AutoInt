@@ -42,3 +42,7 @@ Numbers can be quite annoying to read, so we use a rating system. Below are the 
 - EE: Summaries or opinions
 - EF: Sport
 - FF: Celebrity news
+
+# Future work
+
+It should be possible to add a bunch of sources other than rss feeds like telegram or twitter, but that will wait for now. 
