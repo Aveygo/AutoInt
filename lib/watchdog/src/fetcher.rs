@@ -25,7 +25,12 @@ impl Fetcher {
         }
     }
     
-    pub async fn run(&self) -> Result<Vec<Event>, ()> {
+    fn is_english(text: &String) -> bool {
+        let common_english_words = vec![" the ", " and ", " is ", " in ", " it ", " of "];
+        common_english_words.iter().any(|&word| text.contains(word))
+    }
+    
+    pub async fn run(&self) -> Vec<Event> {
         let futures: Vec<_> = self.rss_urls.clone().into_iter().map(|url| tokio::spawn(Self::extract_feed(url))).collect();
         let results: Vec<Result<Vec<Event>, tokio::task::JoinError>> = join_all(futures).await;
         
@@ -40,11 +45,7 @@ impl Fetcher {
             }
         }
         
-        if !events.is_empty() {
-            Ok(events)
-        } else {
-            Err(())
-        }
+        events
     }
 
     async fn extract_feed(url: String) -> Vec<Event> {
@@ -76,7 +77,7 @@ impl Fetcher {
             ) {
 
                 let headline:String = title.content.nfc().collect();
-                if headline.len() > 5 {
+                if headline.len() > 5 && Self::is_english(&headline) {
                     result.push(Event {
                         headline: headline,
                         published: published.timestamp(),

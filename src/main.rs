@@ -7,6 +7,10 @@ use sha2::{Sha256, Digest};
 use chrono::Utc;
 use watchdog::EventCluster;
 
+use std::env;
+use log::info;
+
+
 fn score_to_rating(score: u32) -> String {
     if score > 2000 {
         return format!("AA")                    // World altering event
@@ -92,32 +96,38 @@ impl Report {
 
 #[tokio::main]
 async fn main() {
+
+    if env::var("RUST_LOG").is_err() {
+        env::set_var("RUST_LOG", "info")
+    }
+    env_logger::init();
+
+    info!("Starting up...");
     let connection_url:String = dotenv!("SUPABASE").to_string();
-
     let watchdog = watchdog::Watchdog::new();
-    
-
 
     let (client, connection) =
         tokio_postgres::connect(&connection_url, NoTls).await.unwrap();
 
     tokio::spawn(async move {
         if let Err(e) = connection.await {
-            eprintln!("Connection error: {}", e);
+            panic!("Connection error: {}", e);
         }
     });
 
     loop {
         let clusters = watchdog.extract_clusters().await;
+
         let report = Report::new(&clusters);
         let report_string: String = serde_json::to_string(&report).unwrap();
 
         let query = format!("UPDATE data SET value = $1 WHERE id = 1");
         let rows_affected = client.execute(&query, &[&report_string]).await.unwrap();
 
-        println!("{:?} Uploaded report, {:?} row update", report.id, rows_affected);
+        info!("{:?} Uploaded report, {:?} row update", report.id, rows_affected);
 
         thread::sleep(Duration::from_secs(60 * 5));
+        info!("Sleeping for 5 minutes")
     }
 
 }

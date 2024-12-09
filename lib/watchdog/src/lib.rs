@@ -6,6 +6,9 @@ use serde::Serialize;
 
 use std::path::Path;
 use chrono::prelude::*;
+use std::time::Instant;
+
+use log::info;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct EventCluster {
@@ -56,8 +59,13 @@ impl Watchdog {
         let priority = cluster_priorities.iter().sum::<f32>() / cluster.len() as f32;
         let cluster_size = cluster.len() as f32;
         let avg_age = (Utc::now().timestamp() as f32 - cluster.iter().map(|x| x.published).sum::<i64>() as f32 / cluster.len() as f32) / 60.0 / 60.0;
+        let result = (cluster_size.log(2.17) * (priority + 1.0)) / ((avg_age + 1.0).powf(1.8)) * 1000.0;
 
-        return (cluster_size.log(2.17) * (priority + 1.0)) / ((avg_age + 1.0).powf(1.8)) * 1000.0
+        info!("Cluster: {:?}", cluster[0].headline);
+        info!("Priority: {:?}, Size: {:?}, Age: {:?}, Final Score: {:?}", priority, cluster_size, avg_age, result);
+        info!("");
+
+        return result
     }
 
     fn sort_clusters(&self, clusters:Vec<Vec<usize>>, events:&Vec<fetcher::Event>, priorities:Vec<f32>) -> Vec<EventCluster> {
@@ -117,8 +125,8 @@ impl Watchdog {
         let mut result = vec![];
 
         for embedding in embeddings {
-            let p = self.cosine_similarity(embedding, &self.positive_tag).unwrap();
-            let n = self.cosine_similarity(embedding, &self.negative_tag).unwrap();
+            let p = self.cosine_similarity(embedding, &self.positive_tag).unwrap() / 0.1;
+            let n = self.cosine_similarity(embedding, &self.negative_tag).unwrap() / 0.1;
 
             result.push(self.softmax(vec![p, n])[0]);
         }
@@ -128,12 +136,25 @@ impl Watchdog {
     }
 
     pub async fn extract_clusters(&self) -> Vec<EventCluster> {
-        let events = self.fetcher.run().await.unwrap();
+        info!("WATCHDOG START");
+        let start = Instant::now();
+        let mut now = Instant::now(); 
+
+        let events = self.fetcher.run().await;
+        info!("Fetched events in : {:.2?}", now.elapsed());
+        now = Instant::now();
+
         let headlines:Vec<String> = events.clone().into_iter().map(|event| event.headline).collect();
         let embeddings = self.model.encode_many(headlines.clone());
+        info!("Encoded events in : {:.2?}", now.elapsed());
+        now = Instant::now();
+
         let priorities = self.calc_priorities(&embeddings);
         let clusters = community::find_clusters(&embeddings, 0.6, 3);
+        info!("Found clusters in : {:.2?}", now.elapsed());
+
         let result = self.sort_clusters(clusters, &events, priorities);
+        info!("Total time: {:.2?}", start.elapsed());
         result
     }
 
