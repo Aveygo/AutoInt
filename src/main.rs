@@ -4,16 +4,15 @@ use serde::Serialize;
 use std::{thread, time::Duration};
 use sha2::{Sha256, Digest};
 use chrono::Utc;
-use watchdog::{EventCluster, Watchdog};
+use watchdog::EventCluster;
 
-use std::path::Path;
 use std::env;
 use log::info;
 
 use std::sync::{Arc, Mutex};
 
 use axum::{
-    routing::{get, post, get_service},
+    routing::get,
     http::StatusCode,
     Json, Router,
     extract::State,
@@ -165,6 +164,7 @@ async fn main() {
             .nest_service("/static", serve_dir)
             .with_state(state);
 
+        
         let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
 
         let _server_handle = tokio::spawn(async {

@@ -40,7 +40,6 @@ impl Watchdog {
 
             model: model,
             fetcher: fetcher::Fetcher::new(vec![
-                "http://www.newsweek.com/rss".to_string(),
                 "https://www.9news.com/feeds/syndication/rss/news".to_string(),
                 "https://content.api.nytimes.com/svc/news/v3/all/recent.rss".to_string(),
                 "https://www.independent.co.uk/news/rss".to_string(),
@@ -49,7 +48,37 @@ impl Watchdog {
                 "https://moxie.foxnews.com/google-publisher/world.xml".to_string(),
                 "https://feeds.a.dj.com/rss/RSSWorldNews.xml".to_string(),
                 "https://www.forbes.com/innovation/feed".to_string(),
-                "https://www.forbes.com/business/feed".to_string()
+                "https://www.forbes.com/business/feed".to_string(),
+                "http://feeds.bbci.co.uk/news/world/rss.xml".to_string(),
+                "https://www.news.com.au/content-feeds/latest-news-world/".to_string(),
+                "https://www.smh.com.au/rss/feed.xml".to_string(),
+                "https://www.heraldsun.com.au/rss".to_string(),
+                "https://www.abc.net.au/news/feed/51120/rss.xml".to_string(),
+                "https://www.thesundaily.my/rss/world".to_string(),
+                "https://feeds.washingtonpost.com/rss/politics".to_string(),
+                "http://rss.cnn.com/rss/edition.rss".to_string(),
+                "https://www.reutersagency.com/feed/?taxonomy=best-sectors&post_type=best".to_string(),
+                "https://www.yahoo.com/news/rss".to_string(),
+                "https://thehill.com/news/feed/".to_string(),
+                "https://www.economist.com/the-world-this-week/rss.xml".to_string(),
+                "https://www.theatlantic.com/feed/all/".to_string(),
+                "http://www.newsweek.com/rss".to_string(),
+                "https://www.theverge.com/rss/index.xml".to_string(),
+                "https://techcrunch.com/feed/".to_string(),
+                "http://feeds2.feedburner.com/businessinsider".to_string(),
+                "http://www.chinadaily.com.cn/rss/world_rss.xml".to_string(),
+                "https://www.thehindu.com/news/feeder/default.rss".to_string(),
+                "http://www.globaltimes.cn/rss/outbrain.xml".to_string(),
+                "https://feeds.feedburner.com/CoinDesk".to_string(),
+                "http://fortune.com/feed/".to_string(),
+                "https://www.reddit.com/r/news/.rss".to_string(),
+                "https://www.reddit.com/r/worldnews/.rss".to_string(),
+                "https://www.cbc.ca/cmlink/rss-topstories".to_string(),
+                "https://www.ctvnews.ca/rss/ctvnews-ca-top-stories-public-rss-1.822009".to_string(),
+                "https://www.france24.com/en/rss".to_string(),
+                "https://www.rt.com/rss/".to_string(),
+                "https://rss.dw.com/rdf/rss-en-all".to_string(),
+                "https://globalnews.ca/feed/".to_string()
             ])
         }
     }
