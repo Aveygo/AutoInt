@@ -20,18 +20,17 @@ If you are looking for how AutoInt works, checkout [extras](EXTRAS.md).
 # Cool facts
 
 - Written in 🔥rust🔥
-- Might break if you look at it wrong
+- Version [0.2.0](https://github.com/Aveygo/AutoInt/releases) is out!
 - Running on a pi 🥧
 
 # Self Hosting
 
 ## Locally
 
-1. Use linux or [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
-2. Download the latest [release](https://github.com/Aveygo/AutoInt/releases)
-3. Set as an executable: ```chmod +x autoint```
-4. Run: ```./autoint``` 
-5. http://localhost:8000
+1. Download the latest [release](https://github.com/Aveygo/AutoInt/releases) for your platform
+2. Set as an executable: ```chmod +x autoint``` if using linux
+3. Run the provided binary file 
+4. Go to http://localhost:8000
 
 ## Docker
 1. Install docker

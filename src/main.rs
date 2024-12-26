@@ -7,19 +7,23 @@ use chrono::Utc;
 use watchdog::EventCluster;
 
 use std::env;
-use log::info;
 
+use log::{info, warn};
 use std::sync::{Arc, Mutex};
+use include_directory::{include_directory, Dir};
 
 use axum::{
     routing::get,
     http::StatusCode,
     Json, Router,
     extract::State,
-    response::{Html, IntoResponse}
+    response::{Html, IntoResponse, AppendHeaders},
+    extract::Path
+
 };
 
-use tower_http::services::ServeDir;
+use tokio_util::io::ReaderStream;
+use reqwest::header;
 
 fn score_to_rating(score: u32) -> String {
     if score > 2000 {
@@ -109,6 +113,9 @@ struct AppState {
     report: Arc<Mutex<Option<Report>>>
 }
 
+
+
+
 #[tokio::main]
 async fn main() {
 
@@ -154,22 +161,20 @@ async fn main() {
         
 
         let report = Arc::new(Mutex::new(None));
-        let state = AppState{report:Arc::clone(&report)}; 
-
-        let serve_dir = ServeDir::new("static");
-
+        let state = AppState{report:Arc::clone(&report)};
+        
         let app = Router::new()
             .route("/", get(root))
             .route("/get_report", get(get_report))
-            .nest_service("/static", serve_dir)
+            .route("/static/*path", get(static_files))
             .with_state(state);
 
         
         let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
-
+        info!("Running on http://0.0.0.0:8000");
+        
         let _server_handle = tokio::spawn(async {
             axum::serve(listener, app)
-
                 .await
                 .unwrap();
         });
@@ -185,27 +190,66 @@ async fn main() {
             }
 
             thread::sleep(Duration::from_secs(60 * 5));
-            info!("Sleeping for 5 minutes")
+            info!("Sleeping for 5 minutes before building next report...")
         }
-
     }
 
 }
 
 async fn root() -> impl IntoResponse {
-    match std::fs::read_to_string("index.html") {
-        Ok(content) => Html(content),
-        Err(e) => Html(format!("Error : {}", e)),
-    }
+    let index_html = include_str!("../index.html");
+    Html(index_html)
 }
 
-async fn get_report(State(state): State<AppState>,) -> (StatusCode, Json<Option<Report>>) {
-    info!("Got a connection");
+async fn static_files(Path(path): Path<String>) -> impl IntoResponse {
+    static STATIC_FOLDER: Dir<'_> = include_directory!("static/");
+    let data = STATIC_FOLDER.get_file(path.clone());
+    
+    match data {
+        Some(data) => {
+            
+            let mimetype = data.mimetype();
+            let body = data.contents();
+
+            let stream = ReaderStream::new(body);
+            let body = axum::body::Body::from_stream(stream);
+
+            let headers = AppendHeaders([
+                (header::CONTENT_TYPE, format!("{}; charset=utf-8", mimetype)),
+                (
+                    header::CONTENT_DISPOSITION,
+                    format!("attachment; filename=\"{}\"", path),
+                ),
+            ]);
+            
+            return Ok((headers, body))
+        },
+        None => {
+            warn!("Client requested invalid static file: {}", path);
+            return Err((StatusCode::NOT_FOUND, format!("File not found: {}", path)))
+        }
+    }
+
+    
+}
+
+async fn get_report(State(state): State<AppState>,) -> (StatusCode, Result<Json<Report>, String>) {
+    info!("Client requested report");
+
     let report;
     {
         let locked = state.report.lock().unwrap();
         report = locked.clone();
     }
 
-    (StatusCode::CREATED, Json(report))
+    match report {
+        Some(report) => {
+            return (StatusCode::CREATED, Ok(Json(report)))
+        },
+        None => {
+            return (StatusCode::NOT_FOUND, Err(format!("Report still building")))
+        }
+    }
+
+    
 }

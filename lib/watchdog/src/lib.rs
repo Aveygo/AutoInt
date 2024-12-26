@@ -92,7 +92,7 @@ impl Watchdog {
 
         info!("Cluster: {:?}", cluster[0].headline);
         info!("Priority: {:?}, Size: {:?}, Age: {:?}, Final Score: {:?}", priority, cluster_size, avg_age, result);
-        info!("");
+        info!("--------------------------------------------------------------------------");
 
         return result
     }

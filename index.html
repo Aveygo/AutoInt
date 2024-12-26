@@ -275,7 +275,6 @@ async function fetch_report() {
             const report = await response.json();
             return report
         }
-        
     }
 
     console.error("Error fetching table data:", response.status, response.statusText);
@@ -285,7 +284,7 @@ async function fetch_report() {
 async function cached_fetch() {
     let report = sessionStorage.getItem("report");
 
-    if (report) {
+    if (!report == null) {
         report = JSON.parse(report);
 
         if ((report.published+60*5) - (Date.now()/1000) <= 0) {

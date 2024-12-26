@@ -43,6 +43,11 @@ Numbers can be quite annoying to read, so we use a rating system. Below are the 
 - EF: Sport
 - FF: Celebrity news
 
+<br>
+Obviously, AutoInt is not going to exactly match these requirements but it should be good enough for 90% of cases.
+<br>
+<br>
+
 # Future work
 
 It should be possible to add a bunch of sources other than rss feeds like telegram or twitter, but that will wait for now. 
