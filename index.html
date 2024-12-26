@@ -426,7 +426,7 @@ function formatTimestampToUTC(timestamp) {
     }
     document.getElementById("meta_nevents").innerHTML = n_events;
     document.getElementById("meta_avgalert").innerHTML = report.avg_rating + " (" + getLevel(report.avg_rating).toUpperCase() + ")";
-    document.getElementById("day").innerHTML = "REPORT FOR " + formatTimestampToUTC(report.published);
+    document.getElementById("day").innerHTML = "REPORT FOR " + formatTimestampToUTC(report.published * 1000);
 
     document.getElementById("end").innerHTML = "END OF REPORT"
 })();
