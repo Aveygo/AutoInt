@@ -1,10 +1,10 @@
-use reqwest::get;
 use feed_rs::parser;
 
 use tokio;
 use tokio::time::{timeout, Duration};
 use futures::future::join_all;
 use serde::Serialize;
+use reqwest::Client;
 
 use unicode_normalization::UnicodeNormalization;
 
@@ -18,7 +18,7 @@ pub struct Event {
 }
 
 pub struct Fetcher {
-    rss_urls: Vec<String>
+    pub rss_urls: Vec<String>
 }
 
 impl Fetcher {
@@ -64,8 +64,13 @@ impl Fetcher {
 
     async fn extract_feed(url: String) -> Vec<Event> {
         let mut result = vec![];
+
+        let client = Client::builder()
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+            .build()
+            .expect("Failed to build client");
     
-        let feed = match timeout(Duration::from_secs(5), get(url.clone())).await {
+        let feed = match timeout(Duration::from_secs(5), client.get(url.clone()).send()).await {
             Ok(Ok(response)) => match response.text().await {
                 Ok(body) => match parser::parse(body.as_bytes()) {
                     Ok(feed) => feed.entries,

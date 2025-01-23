@@ -30,8 +30,8 @@ impl Watchdog {
     pub fn new() -> Self {
 
         let model = RustPotion::new(PotionModel::BASE2M, Path::new("models"));
-        let positive_tag = model.encode("High priority news: geopolitics, war, disaster, collapse, presidents, nations");
-        let negative_tag = model.encode("Low priority news: opinions, celebrity, sports, gossip, local crimes, weather, music, puzzles");
+        let positive_tag = model.encode("High priority news: geopolitics, war, disaster, collapse, presidents, nations, economics");
+        let negative_tag = model.encode("Low priority news: opinions, celebrity, sports, gossip, local crimes, weather, music, puzzles, question");
 
         Self {
             clusters: Err(()),
@@ -46,18 +46,35 @@ impl Watchdog {
                 "https://www.theguardian.com/world/rss".to_string(),
                 "https://www.sbs.com.au/news/topic/latest/feed".to_string(),
                 "https://moxie.foxnews.com/google-publisher/world.xml".to_string(),
+                "https://moxie.foxnews.com/google-publisher/latest.xml".to_string(),
+                "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml".to_string(),
+                "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml".to_string(),
                 "https://feeds.a.dj.com/rss/RSSWorldNews.xml".to_string(),
+                "http://www.dailymail.co.uk/news/index.rss".to_string(),
                 "https://www.forbes.com/innovation/feed2".to_string(),
                 "https://www.forbes.com/business/feed".to_string(),
                 "http://feeds.bbci.co.uk/news/world/rss.xml".to_string(),
                 "https://www.news.com.au/content-feeds/latest-news-world/".to_string(),
                 "https://www.smh.com.au/rss/feed.xml".to_string(),
                 "https://www.heraldsun.com.au/rss".to_string(),
+                "https://feeds.npr.org/1001/rss.xml".to_string(),
                 "https://www.abc.net.au/news/feed/51120/rss.xml".to_string(),
+                "https://chaski.huffpost.com/us/auto/vertical/us-news".to_string(),
+                "http://feeds.abcnews.com/abcnews/usheadlines".to_string(),
                 "https://www.thesundaily.my/rss/world".to_string(),
+                "https://www.politico.com/rss/politicopicks.xml".to_string(),
                 "https://feeds.washingtonpost.com/rss/politics".to_string(),
+                "http://rss.cnn.com/rss/cnn_allpolitics.rss".to_string(),
+                "https://theconversation.com/us/articles.atom".to_string(),
+                "https://www.aljazeera.com/xml/rss/all.xml".to_string(),
+                "https://hongkongfp.com/feed".to_string(),
+                "https://truthout.org/latest/feed/".to_string(),
                 "http://rss.cnn.com/rss/edition.rss".to_string(),
                 "https://www.reutersagency.com/feed/?taxonomy=best-sectors&post_type=best".to_string(),
+                "https://www.cbsnews.com/latest/rss/main".to_string(),
+                "https://www.ft.com/rss/home".to_string(),
+                "https://www.pbs.org/newshour/feeds/rss/headlines".to_string(),
+                "http://www.torontosun.com/home/rss.xml".to_string(),
                 "https://www.yahoo.com/news/rss".to_string(),
                 "https://thehill.com/news/feed/".to_string(),
                 "https://www.economist.com/the-world-this-week/rss.xml".to_string(),
@@ -66,6 +83,7 @@ impl Watchdog {
                 "https://www.theverge.com/rss/index.xml".to_string(),
                 "https://techcrunch.com/feed/".to_string(),
                 "http://feeds2.feedburner.com/businessinsider".to_string(),
+                "http://feeds.feedburner.com/thedailybeast/articles".to_string(),
                 "http://www.chinadaily.com.cn/rss/world_rss.xml".to_string(),
                 "https://www.thehindu.com/news/feeder/default.rss".to_string(),
                 "http://www.globaltimes.cn/rss/outbrain.xml".to_string(),
@@ -79,6 +97,7 @@ impl Watchdog {
                 "https://www.rt.com/rss/".to_string(),
                 "https://rss.dw.com/rdf/rss-en-all".to_string(),
                 "https://globalnews.ca/feed/".to_string(),
+
             ])
         }
     }
@@ -88,7 +107,8 @@ impl Watchdog {
         let priority = cluster_priorities.iter().sum::<f32>() / cluster.len() as f32;
         let cluster_size = cluster.len() as f32;
         let avg_age = (Utc::now().timestamp() as f32 - cluster.iter().map(|x| x.published).sum::<i64>() as f32 / cluster.len() as f32) / 60.0 / 60.0;
-        let result = (cluster_size.log(2.17) * (priority + 1.0)) / ((avg_age + 1.0).powf(1.8)) * 1000.0;
+        let cluster_score = (1.0 + 10.0 * cluster_size / self.fetcher.rss_urls.len() as f32).log(2.718);
+        let result = (cluster_score * (priority + 1.0)) / ((avg_age + 1.0).powf(1.8)) * 1000.0;
 
         info!("Cluster: {:?}", cluster[0].headline);
         info!("Priority: {:?}, Size: {:?}, Age: {:?}, Final Score: {:?}", priority, cluster_size, avg_age, result);
