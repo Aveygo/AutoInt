@@ -48,6 +48,17 @@ Obviously, AutoInt is not going to exactly match these requirements but it shoul
 <br>
 <br>
 
+
+# Updates
+
+```0.1.0``` First release
+
+```0.2.0``` Included html/icons within the binary itself & added some new sources 
+
+```0.3.0``` Added rss feed timouts and can now handle arbitrary amounts of sources
+
+
+
 # Future work
 
 It should be possible to add a bunch of sources other than rss feeds like telegram or twitter, but that will wait for now. 
