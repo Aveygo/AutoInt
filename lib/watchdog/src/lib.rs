@@ -47,7 +47,7 @@ impl Watchdog {
                 "https://www.sbs.com.au/news/topic/latest/feed".to_string(),
                 "https://moxie.foxnews.com/google-publisher/world.xml".to_string(),
                 "https://feeds.a.dj.com/rss/RSSWorldNews.xml".to_string(),
-                "https://www.forbes.com/innovation/feed".to_string(),
+                "https://www.forbes.com/innovation/feed2".to_string(),
                 "https://www.forbes.com/business/feed".to_string(),
                 "http://feeds.bbci.co.uk/news/world/rss.xml".to_string(),
                 "https://www.news.com.au/content-feeds/latest-news-world/".to_string(),
@@ -78,7 +78,7 @@ impl Watchdog {
                 "https://www.france24.com/en/rss".to_string(),
                 "https://www.rt.com/rss/".to_string(),
                 "https://rss.dw.com/rdf/rss-en-all".to_string(),
-                "https://globalnews.ca/feed/".to_string()
+                "https://globalnews.ca/feed/".to_string(),
             ])
         }
     }
@@ -169,7 +169,7 @@ impl Watchdog {
         let start = Instant::now();
         let mut now = Instant::now(); 
 
-        let events = self.fetcher.run().await;
+        let events = self.fetcher.run_with_timeout().await;
         info!("Fetched events in : {:.2?}", now.elapsed());
         now = Instant::now();
 

@@ -2,10 +2,13 @@ use reqwest::get;
 use feed_rs::parser;
 
 use tokio;
+use tokio::time::{timeout, Duration};
 use futures::future::join_all;
 use serde::Serialize;
 
 use unicode_normalization::UnicodeNormalization;
+
+use log::warn;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Event {
@@ -48,26 +51,43 @@ impl Fetcher {
         events
     }
 
+    pub async fn run_with_timeout(&self) -> Vec<Event> {
+        match timeout(Duration::from_secs(10), self.run()).await {
+            Ok(events) => {
+                events
+            }
+            Err(_) => {
+                vec![]
+            }
+        }
+    }
+
     async fn extract_feed(url: String) -> Vec<Event> {
         let mut result = vec![];
-
-        let feed = match get(url).await {
-            Ok(response) => {
-                match response.text().await {
-                    Ok(body) => {
-                        match parser::parse(body.as_bytes()) {
-                            Ok(feed) => {feed.entries}
-                            Err(_e) => {vec![]}
-                        }
-                    }
-                    Err(_e)=> {vec![]}
-
-                }
-
-            }
-            Err(_e) => {vec![]}
+    
+        let feed = match timeout(Duration::from_secs(5), get(url.clone())).await {
+            Ok(Ok(response)) => match response.text().await {
+                Ok(body) => match parser::parse(body.as_bytes()) {
+                    Ok(feed) => feed.entries,
+                    Err(_e) => {
+                        warn!("Could not parse from {:?}", url);
+                        vec![]
+                    },
+                },
+                Err(_e) => {
+                    warn!("Invalid response from {:?}", url);
+                    vec![]
+                },
+            },
+            Ok(Err(_e)) => {
+                warn!("Get request failed for {:?}", url);
+                vec![]
+            },
+            Err(_timeout) => {
+                warn!("Reached timeout for {:?}", url);
+                vec![]
+            },
         };
-
     
         for item in feed {
             if let (Some(title), Some(published), Some(href)) = (
@@ -75,8 +95,7 @@ impl Fetcher {
                 item.published,
                 item.links.get(0).map(|link| &link.href),
             ) {
-
-                let headline:String = title.content.nfc().collect();
+                let headline: String = title.content.nfc().collect();
                 if headline.len() > 5 && Self::is_english(&headline) {
                     result.push(Event {
                         headline: headline,
@@ -89,4 +108,5 @@ impl Fetcher {
     
         result
     }
+    
 }
