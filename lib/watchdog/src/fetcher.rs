@@ -5,10 +5,10 @@ use tokio::time::{timeout, Duration};
 use futures::future::join_all;
 use serde::Serialize;
 use reqwest::Client;
+use log::{info, warn};
 
 use unicode_normalization::UnicodeNormalization;
 
-use log::warn;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Event {
@@ -54,9 +54,11 @@ impl Fetcher {
     pub async fn run_with_timeout(&self) -> Vec<Event> {
         match timeout(Duration::from_secs(10), self.run()).await {
             Ok(events) => {
+                info!("Fetcher found {:?} events", events.len());
                 events
             }
             Err(_) => {
+                warn!("Fetcher critical timeout error! No events were found! (Internet down?)");
                 vec![]
             }
         }
@@ -69,30 +71,39 @@ impl Fetcher {
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
             .build()
             .expect("Failed to build client");
-    
+        
+        info!("Built client for {}", url);
+
         let feed = match timeout(Duration::from_secs(5), client.get(url.clone()).send()).await {
-            Ok(Ok(response)) => match response.text().await {
-                Ok(body) => match parser::parse(body.as_bytes()) {
-                    Ok(feed) => feed.entries,
+            Ok(Ok(response)) => {
+                info!("Received response for {}", url);
+                match response.text().await {
+                    Ok(body) => {
+                        info!("Got body for {}, parsing...", url);
+                        match parser::parse(body.as_bytes()) {
+                            Ok(feed) => feed.entries,
+                            Err(_e) => {
+                                warn!("Could not parse from {}", url);
+                                vec![]
+                            }
+                        }
+                    }
                     Err(_e) => {
-                        warn!("Could not parse from {:?}", url);
+                        warn!("Invalid response from {}", url);
                         vec![]
-                    },
-                },
-                Err(_e) => {
-                    warn!("Invalid response from {:?}", url);
-                    vec![]
-                },
-            },
+                    }
+                }
+            }
             Ok(Err(_e)) => {
-                warn!("Get request failed for {:?}", url);
+                warn!("Get request failed for {}", url);
                 vec![]
-            },
+            }
             Err(_timeout) => {
-                warn!("Reached timeout for {:?}", url);
+                warn!("Reached timeout for {}", url);
                 vec![]
-            },
+            }
         };
+        info!("Processed {} entries for {}", feed.len(), url);
     
         for item in feed {
             if let (Some(title), Some(published), Some(href)) = (
