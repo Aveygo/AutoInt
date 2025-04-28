@@ -1,4 +1,7 @@
 use tokio_postgres::NoTls;
+use tokio::net::TcpListener;
+use tokio::time;
+
 use serde::Serialize;
 
 use std::{thread, time::Duration};
@@ -6,7 +9,7 @@ use sha2::{Sha256, Digest};
 use chrono::Utc;
 use watchdog::EventCluster;
 
-use std::env;
+use std::{env, panic};
 
 use log::{info, warn};
 use std::sync::{Arc, Mutex};
@@ -113,7 +116,81 @@ struct AppState {
     report: Arc<Mutex<Option<Report>>>
 }
 
+pub async fn primary_logic() -> Result<(), Box<dyn std::error::Error>> {
+    let watchdog = watchdog::Watchdog::new();
+    let supabase_url = env::var("SUPABASE");
 
+    if supabase_url.is_ok() {
+        log::info!("Running in Supabase setup");
+        
+        let connection_url: String = supabase_url?;
+        let (client, connection) = tokio_postgres::connect(&connection_url, NoTls).await?;
+
+        // Spawn the connection handler
+        tokio::spawn(async move {
+            if let Err(e) = connection.await {
+                eprintln!("Connection error: {}", e);
+            }
+        });
+
+        loop {
+            let clusters = watchdog.extract_clusters().await;
+
+            let report = Report::new(&clusters);
+            let report_string: String = serde_json::to_string(&report)?;
+
+            let query = "UPDATE data SET value = $1 WHERE id = 1";
+            let rows_affected = client.execute(query, &[&report_string]).await?;
+
+            log::info!("{:?} Uploaded report, {:?} row update", report.id, rows_affected);
+
+            time::sleep(Duration::from_secs(60 * 5)).await;
+            log::info!("Sleeping for 5 minutes");
+        }
+    } else {
+        log::info!("Running in self-hosting setup");
+
+        let report = Arc::new(Mutex::new(None));
+        let state = AppState {
+            report: Arc::clone(&report),
+        };
+
+        let app = Router::new()
+            .route("/", get(root))
+            .route("/get_report", get(get_report))
+            .route("/static/*path", get(static_files))
+            .with_state(state);
+
+        let listener = TcpListener::bind("0.0.0.0:8000").await?;
+        log::info!("Running on http://0.0.0.0:8000");
+
+        // Spawn the server
+        tokio::spawn(async move {
+            if let Err(e) = axum::serve(listener, app).await {
+                eprintln!("Server error: {}", e);
+            }
+        });
+
+        loop {
+            let clusters = watchdog.extract_clusters().await;
+
+            let new_report = Report::new(&clusters);
+
+            {
+                let mut locked = report.lock().map_err(|_| {
+                    Box::new(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "Mutex lock poisoned",
+                    )) as Box<dyn std::error::Error>
+                })?;
+                *locked = Some(new_report);
+            }
+
+            time::sleep(Duration::from_secs(60 * 5)).await;
+            log::info!("Sleeping for 5 minutes before building next report...");
+        }
+    }
+}
 
 
 #[tokio::main]
@@ -124,74 +201,23 @@ async fn main() {
     }
     env_logger::init();
 
-    info!("Starting up...");
 
-    let watchdog = watchdog::Watchdog::new();
-    
-    let supabase_url = env::var("SUPABASE");
+    loop {
+        info!("Starting up...");
+        let result = primary_logic().await;
 
-    if !supabase_url.is_err() {
-        info!("Running in supabase setup");
-        
-        let connection_url:String = supabase_url.unwrap().to_string();
-        let (client, connection) = tokio_postgres::connect(&connection_url, NoTls).await.unwrap();
-
-        tokio::spawn(async move {
-            if let Err(e) = connection.await {
-                panic!("Connection error: {}", e);
+        match result {
+            Ok(_) => {
+                info!("uh? primary logic finished without error?");
+            },
+            Err(e) => {
+                warn!("Primary logic error: {:?}", e);
+                
             }
-        });
-
-        loop {
-            let clusters = watchdog.extract_clusters().await;
-
-            let report = Report::new(&clusters);
-            let report_string: String = serde_json::to_string(&report).unwrap();
-
-            let query = format!("UPDATE data SET value = $1 WHERE id = 1");
-            let rows_affected = client.execute(&query, &[&report_string]).await.unwrap();
-
-            info!("{:?} Uploaded report, {:?} row update", report.id, rows_affected);
-
-            thread::sleep(Duration::from_secs(60 * 5));
-            info!("Sleeping for 5 minutes")
         }
-    } else {
-        info!("Running in self-hosting setup");
-        
 
-        let report = Arc::new(Mutex::new(None));
-        let state = AppState{report:Arc::clone(&report)};
-        
-        let app = Router::new()
-            .route("/", get(root))
-            .route("/get_report", get(get_report))
-            .route("/static/*path", get(static_files))
-            .with_state(state);
-
-        
-        let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
-        info!("Running on http://0.0.0.0:8000");
-        
-        let _server_handle = tokio::spawn(async {
-            axum::serve(listener, app)
-                .await
-                .unwrap();
-        });
-
-        loop {
-            let clusters = watchdog.extract_clusters().await;
-
-            let new_report = Report::new(&clusters);
-
-            {
-                let mut locked = report.lock().unwrap();
-                *locked = Some(new_report);
-            }
-
-            thread::sleep(Duration::from_secs(60 * 5));
-            info!("Sleeping for 5 minutes before building next report...")
-        }
+        warn!("Program loop stopped, restarting in 1 minute...");
+        thread::sleep(Duration::from_secs(60 * 1));
     }
 
 }
