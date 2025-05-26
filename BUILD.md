@@ -23,10 +23,8 @@ Macos: For some reason, ring v0.18.8 refuses to compile for macos </br>
 The resulting binary file should be at ```target/release/<platform>/autoint```
 
 # Docker
-
-1. Build the container: ```sudo docker build --no-cache -t aveygo/autoint .```
+0. Edit the dockerfile to select the version of autoint to run
+1. Build the container: ```sudo docker build --no-cache -t aveygo/autoint:latest .```
 2. Push to dockerhub: ```sudo docker push aveygo/autoint:latest``` (will need to be authenticated as Aveygo - use ```*sudo* docker login -u aveygo```)
 3. Pulling to target host: ```sudo docker image pull aveygo/autoint:latest```
 4. Running in supabase mode: ```sudo docker run -e SUPABASE=PRIVATE_KEY_HERE --restart=always -d -p 8000:8000 aveygo/autoint:latest```
-
-

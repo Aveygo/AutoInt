@@ -34,6 +34,7 @@ impl Fetcher {
     }
     
     pub async fn run(&self) -> Vec<Event> {
+        info!("Spawning extract tasks...");
         let futures: Vec<_> = self.rss_urls.clone().into_iter().map(|url| tokio::spawn(Self::extract_feed(url))).collect();
         let results: Vec<Result<Vec<Event>, tokio::task::JoinError>> = join_all(futures).await;
         
@@ -80,10 +81,14 @@ impl Fetcher {
                 match response.text().await {
                     Ok(body) => {
                         info!("Got body for {}, parsing...", url);
-                        match parser::parse(body.as_bytes()) {
-                            Ok(feed) => feed.entries,
-                            Err(_e) => {
+                        match tokio::task::spawn_blocking(move || parser::parse(body.as_bytes())).await {
+                            Ok(Ok(feed)) => feed.entries,
+                            Ok(Err(_e)) => {
                                 warn!("Could not parse from {}", url);
+                                vec![]
+                            }
+                            Err(_e) => {
+                                warn!("Spawn blocking failed for {}", url);
                                 vec![]
                             }
                         }

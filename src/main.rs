@@ -9,7 +9,7 @@ use sha2::{Sha256, Digest};
 use chrono::Utc;
 use watchdog::EventCluster;
 
-use std::{env, panic};
+use std::env;
 
 use log::{info, warn};
 use std::sync::{Arc, Mutex};
